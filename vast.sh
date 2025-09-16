@@ -47,9 +47,8 @@ get_nodes() {
 VAE_MODELS=("https://huggingface.co/lodestones/Chroma/resolve/main/ae.safetensors")
 TEXT_ENCODER_MODELS=(
   "https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp16.safetensors"
-  "https://huggingface.co/silveroxides/flan-t5-xxl-encoder-only/resolve/main/flan-t5-xxl-fp16.safetensors"
 )
-DIFFUSION_MODELS=("https://huggingface.co/lodestones/Chroma/resolve/main/chroma-unlocked-v48.safetensors")
+DIFFUSION_MODELS=("https://huggingface.co/lodestones/Chroma1-Base/resolve/main/Chroma1-Base.safetensors")
 
 # --- logging ---
 LOGDIR="/var/log/portal"
