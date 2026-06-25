@@ -116,14 +116,18 @@ download_hf_file() {
   while [ "$attempt" -le "$max_retries" ]; do
     echo "Downloading $file_path (attempt $attempt/$max_retries)..."
 
-    if hf download "$repo" "$file_path" \
-      --local-dir "$temp_dir" \
-      --local-dir-use-symlinks False; then
-
-      mv "$temp_dir/$file_path" "$output_path"
-      echo "✓ Successfully downloaded: $output_path"
-      return 0
+  if hf download "$repo" "$file_path" --local-dir "$temp_dir"; then
+    mkdir -p "$(dirname "$output_path")"
+  
+    if [ ! -f "$temp_dir/$file_path" ]; then
+      echo "ERROR: downloaded file not found: $temp_dir/$file_path"
+      return 1
     fi
+  
+    mv "$temp_dir/$file_path" "$output_path"
+    echo "✓ Successfully downloaded: $output_path"
+    return 0
+  fi
 
     echo "✗ Download failed (attempt $attempt/$max_retries), retrying in ${retry_delay}s..."
     sleep "$retry_delay"
