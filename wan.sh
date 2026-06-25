@@ -12,18 +12,12 @@ HF_MAX_PARALLEL=3
 
 # Model declarations: "URL|OUTPUT_PATH"
 HF_MODELS=(
-  "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors
-  |$MODELS_DIR/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
-  "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors
-  |$MODELS_DIR/vae/wan_2.1_vae.safetensors"
-  "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors
-  |$MODELS_DIR/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
-  "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors
-  |$MODELS_DIR/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
-  "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors
-  |$MODELS_DIR/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors"
-  "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors
-  |$MODELS_DIR/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors"
+  "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged/resolve/main/split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors|$MODELS_DIR/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors"
+  "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/wan_2.1_vae.safetensors|$MODELS_DIR/vae/wan_2.1_vae.safetensors"
+  "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors|$MODELS_DIR/diffusion_models/wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors"
+  "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors|$MODELS_DIR/diffusion_models/wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors"
+  "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors|$MODELS_DIR/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors"
+  "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors|$MODELS_DIR/loras/wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors"
 )
 ### End Configuration ###
 
@@ -67,91 +61,97 @@ download_input() {
 }
 
 # HuggingFace download helper
+# replace download_hf_file/acquire_slot/release_slot with this
+
 download_hf_file() {
   local url="$1"
   local output_path="$2"
   local lockfile="${output_path}.lock"
   local max_retries=5
   local retry_delay=2
-  
-  # Acquire slot for parallel download limiting
-  local slot=$(acquire_slot)
-  
-  # Acquire lock for this specific file
+  local slot=""
+  local temp_dir=""
+
+  cleanup_download() {
+    local rc=$?
+    [ -n "${temp_dir:-}" ] && rm -rf "$temp_dir"
+    [ -n "${slot:-}" ] && release_slot "$slot"
+    rmdir "$lockfile" 2>/dev/null || true
+    return "$rc"
+  }
+
+  slot="$(acquire_slot)"
+  trap cleanup_download RETURN
+
+  mkdir -p "$(dirname "$output_path")"
+
   while ! mkdir "$lockfile" 2>/dev/null; do
+    if [ -f "$output_path" ]; then
+      echo "File already exists: $output_path (skipping)"
+      return 0
+    fi
     echo "Another process is downloading to $output_path (waiting...)"
     sleep 1
   done
-  
-  # Check if file already exists
+
   if [ -f "$output_path" ]; then
     echo "File already exists: $output_path (skipping)"
-    rmdir "$lockfile"
-    release_slot "$slot"
     return 0
   fi
-  
-  # Extract repo and file path
-  local repo=$(echo "$url" | sed -n 's|https://huggingface.co/\([^/]*/[^/]*\)/resolve/.*|\1|p')
-  local file_path=$(echo "$url" | sed -n 's|https://huggingface.co/[^/]*/[^/]*/resolve/[^/]*/\(.*\)|\1|p')
-  
+
+  local repo
+  local file_path
+
+  repo="$(echo "$url" | tr -d '[:space:]' | sed -n 's|https://huggingface.co/\([^/]*/[^/]*\)/resolve/.*|\1|p')"
+  file_path="$(echo "$url" | tr -d '[:space:]' | sed -n 's|https://huggingface.co/[^/]*/[^/]*/resolve/[^/]*/\(.*\)|\1|p')"
+
   if [ -z "$repo" ] || [ -z "$file_path" ]; then
     echo "ERROR: Invalid HuggingFace URL: $url"
-    rmdir "$lockfile"
-    release_slot "$slot"
     return 1
   fi
-  
-  local temp_dir=$(mktemp -d)
+
+  temp_dir="$(mktemp -d)"
+
   local attempt=1
-  
-  # Retry loop for rate limits and transient failures
-  while [ $attempt -le $max_retries ]; do
+  while [ "$attempt" -le "$max_retries" ]; do
     echo "Downloading $file_path (attempt $attempt/$max_retries)..."
-    
-    if hf download "$repo" \
-      "$file_path" \
-      --cache-dir "$temp_dir/.cache" 2>&1; then
-      
-      # Success - move file and clean up
-      mkdir -p "$(dirname "$output_path")"
+
+    if hf download "$repo" "$file_path" \
+      --local-dir "$temp_dir" \
+      --local-dir-use-symlinks False; then
+
       mv "$temp_dir/$file_path" "$output_path"
-      rm -rf "$temp_dir"
-      rmdir "$lockfile"
-      release_slot "$slot"
       echo "✓ Successfully downloaded: $output_path"
       return 0
-    else
-      echo "✗ Download failed (attempt $attempt/$max_retries), retrying in ${retry_delay}s..."
-      sleep $retry_delay
-      retry_delay=$((retry_delay * 2))  # Exponential backoff
-      attempt=$((attempt + 1))
     fi
+
+    echo "✗ Download failed (attempt $attempt/$max_retries), retrying in ${retry_delay}s..."
+    sleep "$retry_delay"
+    retry_delay=$((retry_delay * 2))
+    attempt=$((attempt + 1))
   done
-  
-  # All retries failed
+
   echo "ERROR: Failed to download $output_path after $max_retries attempts"
-  rm -rf "$temp_dir"
-  rmdir "$lockfile"
-  release_slot "$slot"
   return 1
 }
 
 acquire_slot() {
+  mkdir -p "$HF_SEMAPHORE_DIR"
+
   while true; do
-    local count=$(find "$HF_SEMAPHORE_DIR" -name "slot_*" 2>/dev/null | wc -l)
-    if [ $count -lt $HF_MAX_PARALLEL ]; then
-      local slot="$HF_SEMAPHORE_DIR/slot_$$_$RANDOM"
-      touch "$slot"
-      echo "$slot"
-      return 0
-    fi
+    for i in $(seq 1 "$HF_MAX_PARALLEL"); do
+      local slot="$HF_SEMAPHORE_DIR/slot_$i"
+      if mkdir "$slot" 2>/dev/null; then
+        echo "$slot"
+        return 0
+      fi
+    done
     sleep 0.5
   done
 }
 
 release_slot() {
-  rm -f "$1"
+  rmdir "$1" 2>/dev/null || true
 }
 
 # This workflow is as provided by ComfyUI template browser
