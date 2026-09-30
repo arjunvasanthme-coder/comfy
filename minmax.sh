@@ -23,7 +23,7 @@ HF_MAX_PARALLEL=3
 HF_MODELS=(
   # H3 diffusion models
   "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_fl2va_int8_convrot.safetensors|$MODELS_DIR/diffusion_models/minimax_h3_fl2va_int8_convrot.safetensors"
-  "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors|$MODELS_DIR/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors"
+  # "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors|$MODELS_DIR/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors"
 
   # Official Qwen encoder — keep for A/B comparison
   #"https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors|$MODELS_DIR/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
