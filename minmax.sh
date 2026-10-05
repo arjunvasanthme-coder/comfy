@@ -42,6 +42,14 @@ HF_MODELS=(
   "https://github.com/madebyollin/taehv/raw/refs/heads/main/taeh3.pth|$MODELS_DIR/vae_approx/taeh3.pth"
 )
 
+case "${DOWNLOAD_REF_MODEL:-false}" in
+  1|true|TRUE|yes|YES)
+    HF_MODELS+=(
+      "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors|$MODELS_DIR/diffusion_models/minimax_h3_ref2va_int8_convrot.safetensors"
+    )
+    ;;
+esac
+
 # Custom nodes: "REPO_URL|DIRECTORY_NAME"
 CUSTOM_NODES=(
   "https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context.git|ComfyUI-H3-Motion-Context",
