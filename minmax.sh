@@ -37,6 +37,9 @@ HF_MODELS=(
   # VAEs
   "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors|$MODELS_DIR/vae/minimax_h3_video_vae_fp16.safetensors"
   "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors|$MODELS_DIR/vae/minimax_h3_audio_vae_fp32.safetensors"
+
+  # VAE Approx
+  "https://github.com/madebyollin/taehv/raw/refs/heads/main/taeh3.pth|$MODELS_DIR/vae_approx/taeh3.pth"
 )
 
 # Custom nodes: "REPO_URL|DIRECTORY_NAME"
@@ -82,7 +85,7 @@ main() {
     local url="${model%%|*}"
     local output_path="${model##*|}"
 
-    download_hf_file "$url" "$output_path" &
+    download_model_file "$url" "$output_path" &
     pids+=($!)
   done
 
@@ -129,8 +132,8 @@ install_custom_nodes() {
 }
 
 
-# Hugging Face download helper.
-download_hf_file() {
+# Generic download helper supporting both HuggingFace and direct URLs.
+download_model_file() {
   local url="$1"
   local output_path="$2"
   local lockfile="${output_path}.lock"
@@ -170,6 +173,33 @@ download_hf_file() {
     return 0
   fi
 
+  temp_dir="$(mktemp -d)"
+
+  local attempt=1
+
+  # Check if URL is HuggingFace or direct download
+  if [[ "$url" =~ huggingface\.co ]]; then
+    download_from_hf "$url" "$temp_dir" "$output_path" "$max_retries" "$retry_delay" &
+    local hf_pid=$!
+    wait "$hf_pid" || return 1
+  else
+    # Direct URL download
+    download_direct "$url" "$temp_dir" "$output_path" "$max_retries" "$retry_delay" &
+    local direct_pid=$!
+    wait "$direct_pid" || return 1
+  fi
+
+  return 0
+}
+
+
+download_from_hf() {
+  local url="$1"
+  local temp_dir="$2"
+  local output_path="$3"
+  local max_retries="$4"
+  local retry_delay="$5"
+
   local repo
   local file_path
 
@@ -190,8 +220,6 @@ download_hf_file() {
     return 1
   fi
 
-  temp_dir="$(mktemp -d)"
-
   local attempt=1
 
   while [ "$attempt" -le "$max_retries" ]; do
@@ -207,6 +235,41 @@ download_hf_file() {
 
       mv "$temp_dir/$file_path" "$output_path"
 
+      echo "✓ Successfully downloaded: $output_path"
+      return 0
+    fi
+
+    echo "✗ Download failed (attempt $attempt/$max_retries), retrying in ${retry_delay}s..."
+
+    sleep "$retry_delay"
+
+    retry_delay=$((retry_delay * 2))
+    attempt=$((attempt + 1))
+  done
+
+  echo "ERROR: Failed to download $output_path after $max_retries attempts"
+  return 1
+}
+
+
+download_direct() {
+  local url="$1"
+  local temp_dir="$2"
+  local output_path="$3"
+  local max_retries="$4"
+  local retry_delay="$5"
+
+  local filename
+  filename="$(basename "$url" | sed 's/?.*//g')"  # Remove query params
+
+  local attempt=1
+
+  while [ "$attempt" -le "$max_retries" ]; do
+    echo "Downloading $(basename "$output_path") (attempt $attempt/$max_retries)..."
+
+    if curl -fsSL -o "$temp_dir/$filename" "$url"; then
+      mkdir -p "$(dirname "$output_path")"
+      mv "$temp_dir/$filename" "$output_path"
       echo "✓ Successfully downloaded: $output_path"
       return 0
     fi
