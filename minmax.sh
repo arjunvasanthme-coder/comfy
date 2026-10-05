@@ -41,7 +41,8 @@ HF_MODELS=(
 
 # Custom nodes: "REPO_URL|DIRECTORY_NAME"
 CUSTOM_NODES=(
-  "https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context.git|ComfyUI-H3-Motion-Context"
+  "https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context.git|ComfyUI-H3-Motion-Context",
+  "https://github.com/kijai/ComfyUI-KJNodes"
 )
 
 ### End Configuration ###
