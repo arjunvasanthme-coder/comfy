@@ -29,7 +29,7 @@ HF_MODELS=(
   "https://huggingface.co/ethanfel/Qwen3-VL-32B-Ultra-Heretic-H3-ComfyUI-INT8-ConvRot/resolve/main/qwen3vl_32b_h3_ultra_uncensored_heretic_int8_convrot.safetensors|$MODELS_DIR/text_encoders/qwen3vl_32b_h3_ultra_uncensored_heretic_int8_convrot.safetensors"
 
   # LightX2V MiniMax H3 FL2V Turbo 8-step LoRA
-  "https://huggingface.co/lightx2v/Minimax-h3-Turbo/resolve/main/minimax_h3_fl2v_turbo_8step_v1.1_comfyui_bf16.safetensors|$MODELS_DIR/loras/minimax_h3_fl2v_turbo_8step_v1.1_comfyui_bf16.safetensors"
+  "https://huggingface.co/lightx2v/Minimax-h3-Turbo/resolve/main/minimax_h3_fl2v_turbo_8step_v1.2_768p_comfyui_bf16.safetensors|$MODELS_DIR/loras/minimax_h3_fl2v_turbo_8step_v1.2_comfyui_bf16.safetensors"
 
   # VAEs
   "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_int8_convrot.safetensors|$MODELS_DIR/vae/minimax_h3_video_vae_int8_convrot.safetensors"
